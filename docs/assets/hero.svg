@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+<title id="title">Hermac — Your Hermes. At home on Mac.</title>
+<desc id="desc">Native macOS chat, quick conversations and translation for your local Hermes Agent.</desc>
+<defs>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#55b6ff"/><stop offset=".45" stop-color="#1162f5"/><stop offset="1" stop-color="#1231a8"/></linearGradient>
+  <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".96"/><stop offset=".5" stop-color="#d7edff" stop-opacity=".92"/><stop offset="1" stop-color="#91caff" stop-opacity=".86"/></linearGradient>
+  <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#edf3fc"/></linearGradient>
+  <filter id="shadow" x="-50%" y="-50%" width="200%" height="220%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#2457a0" flood-opacity=".18"/></filter>
+</defs>
+<rect x="1" y="1" width="1198" height="418" rx="30" fill="url(#paper)" stroke="#dfe8f5"/>
+<circle cx="1090" cy="60" r="210" fill="#daeaff" opacity=".45"/>
+<circle cx="1190" cy="350" r="170" fill="#e7e6ff" opacity=".48"/>
+<g filter="url(#shadow)"><rect x="80" y="90" width="220" height="220" rx="52" fill="url(#blue)"/>
+<g transform="translate(80 90) scale(0.21484375)">  <g transform="translate(512 512)">
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(0)" fill="url(#wing)"/>
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(60)" fill="url(#wing)"/>
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(120)" fill="url(#wing)"/>
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(180)" fill="url(#wing)"/>
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(240)" fill="url(#wing)"/>
+    <path d="M 0 0
+  C -130 -35 -112 -180 -104 -270
+  C -104 -328 -113 -354 -108 -370
+  Q -111 -377 -103 -374
+  C -10 -347 72 -291 53 -226
+  C 36 -159 -44 -128 -26 -61
+  C -18 -25 -4 -6 0 0 Z" transform="rotate(300)" fill="url(#wing)"/>
+  </g>
+</g></g>
+<g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<text x="355" y="100" font-size="16" font-weight="650" letter-spacing="5" fill="#406084">HERMAC</text>
+<text x="350" y="170" font-size="58" font-weight="700" letter-spacing="-2" fill="#182b43">Your Hermes.</text>
+<text x="350" y="237" font-size="58" font-weight="500" letter-spacing="-2" fill="#285dab">At home on Mac.</text>
+<text x="354" y="287" font-size="21" fill="#52667e">Native chat · quick conversations · translation</text>
+<g transform="translate(354 321)"><rect width="216" height="35" rx="17.5" fill="#fff" opacity=".85"/><text x="17" y="23" font-size="14" font-weight="550" fill="#365d91">SwiftUI &amp; Liquid Glass</text></g>
+<g transform="translate(584 321)"><rect width="205" height="35" rx="17.5" fill="#fff" opacity=".85"/><text x="17" y="23" font-size="14" font-weight="550" fill="#365d91">Built for local Hermes</text></g>
+</g></svg>

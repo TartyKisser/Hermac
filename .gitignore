@@ -1,0 +1,41 @@
+# macOS / Xcode
+.DS_Store
+build/
+DerivedData/
+.build/
+**/xcuserdata/
+*.xcuserstate
+*.xcresult/
+*.dSYM/
+*.app/
+*.xcarchive/
+*.ipa
+*.dmg
+*.log
+
+# Python / editor state
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.idea/
+.vscode/
+
+# Local credentials and runtime data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+credentials.*
+secrets.*
