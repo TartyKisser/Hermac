@@ -1,6 +1,6 @@
 # Testing Hermac
 
-Hermac 0.5.2 has **59 Swift/XCTest unit tests** and **3 Python transport tests**. Run the ordinary unit suites first; live gateway tests are separate and opt-in.
+Hermac 0.6.0 has **87 Swift/XCTest unit tests** and **3 Python transport tests**. Run the ordinary unit suites first; live gateway tests are separate and opt-in.
 
 ## Requirements
 
@@ -19,13 +19,15 @@ xcodebuild -project Hermac.xcodeproj -scheme Hermac \
 python3 -m unittest discover -s Tests -p 'test_*.py' -v
 ```
 
-The Xcode test host does not start Hermes or register the application's global shortcuts. The Python transport tests use fake clients; they do not import an installed Hermes runtime or read credentials.
+The Xcode test host does not start Hermes or register the application's global shortcuts. Reminder-store tests use a fake EventKit client, and context-capture tests use synthetic images and geometry; they do not capture the desktop, post scrolling events, or write system reminders. The Python transport tests use fake clients; they do not import an installed Hermes runtime or read credentials.
 
 Coverage includes:
 
 - Transcript projection, session-source filtering, branch boundaries and streaming events.
 - Translation-session creation, close/cleanup races and stale-event isolation.
-- Global shortcut validation, recording and conflict handling.
+- Reminder JSON/date/timezone parsing, all-day dates, draft edits, permission/close races, duplicate confirmation, save retry, and hidden model-session cleanup.
+- Nearby-context limits, source-window matching, local image registration, pixel scrolling-event construction, restoration ordering and verification.
+- Global shortcut validation, recording and conflict handling for three independently saved actions.
 - Chinese input composition, Return/Shift-Return behavior and native editor updates.
 - Screenshot dimensions, selection decoding and conditional clipboard restoration. Clipboard tests use a separate named pasteboard.
 - Markdown headings, tables, alignment, inline styles, nested lists, quotes, code and unfinished fences.
@@ -63,7 +65,10 @@ Build and run the `Hermac` scheme on **My Mac**. Use synthetic, non-private cont
 4. Enter Chinese with a system input method. Confirm candidate selection and that Return commits composition before sending.
 5. Select synthetic English in a supported App and use **⌃⇧T**. Verify translation, copy feedback and normal close. Accessibility permission is needed for this feature.
 6. Optionally enable screenshot context on a display containing only test material. Confirm the captured display and that the quick panel itself is excluded. This requires screen-recording permission and sends the image through Hermes to its configured model.
-7. Record a custom shortcut, check a known reserved/system conflict, then restore the defaults.
+7. Use **⌃⇧R** on synthetic scheduling text. Verify the processing pill, actual context-scope notice, editable draft, and cancellation without creating an item. This calls the configured Hermes model; native text reading needs Accessibility, and OCR/image fallback may request Screen Recording.
+8. In a test window containing only synthetic material, check nearby loaded text and the current/up to two preceding OCR views. Confirm restoration is reported accurately, and that switching apps or interacting stops collection.
+9. To test saving, load writable lists or confirm with macOS Reminders access. Confirmation creates a real item in the chosen list: use a disposable test title and no date/time to avoid a notification, then verify the editable fields and completion indicator in Reminders. Do not confirm if you only want to test extraction.
+10. Record custom shortcuts, check a known reserved/system conflict, then restore the defaults.
 
 Real global shortcuts and independent input-method candidate windows may need physical keyboard validation; targeted automation keystrokes are not sufficient evidence.
 

@@ -9,10 +9,19 @@ final class HermacController {
     let quickStore = ChatStore()
     let shortcuts = GlobalShortcutController()
     let translationShortcuts = GlobalShortcutController(purpose: .translation)
+    let reminderShortcuts = GlobalShortcutController(purpose: .reminder)
     let translation = TranslationStore()
+    let reminder = ReminderStore()
     private var hasStarted = false
     private var isQuitting = false
     private var selectionRevision = 0
+    private var reminderRevision = 0
+    private var reminderCaptureTask: Task<Void, Never>?
+    private var reminderSource: NSRunningApplication?
+    private var reminderContext: SelectionContext?
+    private var reminderContextText = ""
+    private var reminderContextSummary = ""
+    private var reminderImage: URL?
 
     lazy var quickPanel = QuickChatPanelController(
         store: quickStore,
@@ -27,10 +36,17 @@ final class HermacController {
         didClose: { [weak self] in self?.closeTranslation() },
         requestAccessibility: { SelectedTextService.requestPermission() }
     )
+    lazy var reminderPanel = ReminderPanelController(
+        store: reminder,
+        didClose: { [weak self] in self?.closeReminder() },
+        retry: { [weak self] in self?.retryReminder() },
+        requestAccessibility: { SelectedTextService.requestPermission() }
+    )
 
     init() {
         quickStore.onConversationsChanged = { [weak self] in self?.refreshMainConversations() }
         translation.onCleanupFailure = { [weak self] in self?.store.errorMessage = $0 }
+        reminder.onCleanupFailure = { [weak self] in self?.store.errorMessage = $0 }
     }
 
     func start() async {
@@ -38,6 +54,7 @@ final class HermacController {
         hasStarted = true
         shortcuts.start { [weak self] in self?.toggleQuickChat() }
         translationShortcuts.start { [weak self] in self?.translateSelection() }
+        reminderShortcuts.start { [weak self] in self?.createReminderFromSelection() }
         await store.connect()
     }
 
@@ -65,11 +82,120 @@ final class HermacController {
         translation.close()
     }
 
+    func createReminderFromSelection() {
+        guard !isQuitting, reminder.phase != .saving,
+              let source = NSWorkspace.shared.frontmostApplication else { return }
+        prepareReminder(from: source)
+    }
+
+    private func prepareReminder(from source: NSRunningApplication) {
+        let previous = reminderCaptureTask
+        previous?.cancel()
+        reminderRevision += 1
+        let revision = reminderRevision
+        reminder.close()
+        clearReminderInput()
+        reminderSource = source
+        reminder.phase = .extracting
+        reminderPanel.showProcessing(anchorRect: SelectionContextService.anchorRect(from: source))
+        reminderCaptureTask = Task {
+            await previous?.value
+            do {
+                try Task.checkCancellation()
+                let context = try await SelectionContextService.capture(from: source)
+                guard revision == reminderRevision, !isQuitting else { return }
+                reminderPanel.showProcessing(anchorRect: context.anchorRect)
+                var contextText = [context.windowTitle, context.visibleText].filter { !$0.isEmpty }.joined(separator: "\n\n")
+                var summary = context.contextScope + (context.notice.isEmpty ? "" : " · " + context.notice)
+                var image: URL?
+                if !context.hasExtendedContext {
+                    do {
+                        let recent = try await RecentContextCaptureService.capture(
+                            application: source, windowTitle: context.windowTitle, windowFrame: context.windowFrame,
+                            scrollRect: context.scrollRect, anchorRect: context.anchorRect,
+                            selectedText: context.selectedText
+                        )
+                        contextText += (contextText.isEmpty ? "" : "\n\n") + recent.text
+                        image = recent.imageURL
+                        summary = recent.notice
+                    } catch is CancellationError { throw CancellationError() }
+                    catch {
+                        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == source.processIdentifier else { throw error }
+                        summary = "仅使用选区及已读取文字；暂未取得更多上下文。"
+                    }
+                }
+                guard revision == reminderRevision, !isQuitting, !Task.isCancelled else {
+                    if let image { try? FileManager.default.removeItem(at: image) }
+                    return
+                }
+                reminderContext = context
+                reminderContextText = contextText
+                reminderContextSummary = summary
+                reminderImage = image
+                beginReminderExtraction()
+            } catch is CancellationError { }
+            catch {
+                guard revision == reminderRevision, !isQuitting else { return }
+                let problem = reminderSelectionError(error)
+                reminder.showError(problem, needsPermission: error as? SelectedTextService.SelectionError == .permissionRequired)
+            }
+        }
+    }
+
+    private func beginReminderExtraction() {
+        guard let context = reminderContext else { return }
+        reminder.contextSummary = reminderContextSummary
+        reminder.begin(selectedText: context.selectedText, context: reminderContextText,
+                       appName: context.appName, launcherPath: store.launcherPath, imageURL: reminderImage)
+    }
+
+    private func retryReminder() {
+        if reminderContext != nil { beginReminderExtraction() }
+        else if let source = reminderSource,
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == source.processIdentifier {
+            prepareReminder(from: source)
+        } else {
+            reminder.showError(HermesServiceError(message: "请回到原来的聊天、邮件或文档，重新选中文字并触发快捷键。"))
+        }
+    }
+
+    private func closeReminder() {
+        reminderRevision += 1
+        reminderCaptureTask?.cancel()
+        reminder.close()
+        clearReminderInput()
+        reminderSource = nil
+    }
+
+    private func clearReminderInput() {
+        if let reminderImage { try? FileManager.default.removeItem(at: reminderImage) }
+        reminderImage = nil
+        reminderContext = nil
+        reminderContextText = ""
+        reminderContextSummary = ""
+    }
+
+    private func reminderSelectionError(_ error: Error) -> Error {
+        guard let selection = error as? SelectedTextService.SelectionError else { return error }
+        switch selection {
+        case .permissionRequired:
+            return HermesServiceError(message: "请在系统设置的“隐私与安全性 → 辅助功能”中允许 Hermac，返回原界面后重新触发快捷键。")
+        case .noSelection:
+            return HermesServiceError(message: "请先选中包含日程要求的文字，再使用快捷键创建提醒事项。")
+        case .readFailed(let name), .unsupportedApplication(let name):
+            return HermesServiceError(message: "无法读取\(name)中的所选文字，请重新选择后再试。")
+        }
+    }
+
     func prepareToQuit() async {
         isQuitting = true
         selectionRevision += 1
         shortcuts.stop()
         translationShortcuts.stop()
+        reminderShortcuts.stop()
+        closeReminder()
+        await reminderCaptureTask?.value
+        await reminder.shutdown()
         await translation.shutdown()
     }
 
@@ -119,6 +245,7 @@ final class HermacController {
     func stop() {
         shortcuts.stop()
         translationShortcuts.stop()
+        reminderShortcuts.stop()
         quickStore.disconnect()
         store.disconnect()
     }

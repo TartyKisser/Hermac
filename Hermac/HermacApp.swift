@@ -31,6 +31,7 @@ struct HermacApp: App {
                     controller.toggleQuickChat()
                 }
                 Button("翻译所选文本", systemImage: "translate") { controller.translateSelection() }
+                Button("从所选文本创建提醒事项", systemImage: "checklist") { controller.createReminderFromSelection() }
             }
             CommandMenu("会话") {
                 Button("刷新会话", systemImage: "arrow.clockwise") {
@@ -49,7 +50,8 @@ struct HermacApp: App {
         }
 
         Settings {
-            SettingsView(store: store, shortcuts: controller.shortcuts, translationShortcuts: controller.translationShortcuts)
+            SettingsView(store: store, shortcuts: controller.shortcuts, translationShortcuts: controller.translationShortcuts,
+                         reminderShortcuts: controller.reminderShortcuts)
         }
     }
 }

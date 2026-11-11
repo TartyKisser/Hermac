@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Bindable var store: ChatStore
     @Bindable var shortcuts: GlobalShortcutController
     @Bindable var translationShortcuts: GlobalShortcutController
+    @Bindable var reminderShortcuts: GlobalShortcutController
 
     var body: some View {
         Form {
@@ -24,6 +25,7 @@ struct SettingsView: View {
             Section {
                 ShortcutSettingRow(title: "呼出快捷会话", identifier: "quickChat", shortcuts: shortcuts)
                 ShortcutSettingRow(title: "翻译选中的英文", identifier: "quickTranslation", shortcuts: translationShortcuts)
+                ShortcutSettingRow(title: "从选区创建提醒事项", identifier: "quickReminder", shortcuts: reminderShortcuts)
             } header: { Text("全局快捷键") }
             Section {
                 LabeledContent("应用", value: "Hermac \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
@@ -31,10 +33,11 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding(12).frame(width: 600, height: 570)
+        .padding(12).frame(width: 600, height: 700)
         .onDisappear {
             shortcuts.cancelRecording()
             translationShortcuts.cancelRecording()
+            reminderShortcuts.cancelRecording()
         }
     }
 }

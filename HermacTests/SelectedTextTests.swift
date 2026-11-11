@@ -62,6 +62,31 @@ final class SelectedTextTests: XCTestCase {
         XCTAssertFalse(SelectedTextService.shouldEnableManualAccessibility(bundleID: "com.microsoft.VSCode", after: .permissionRequired))
     }
 
+    func testUnknownHTMLSelectionAllowsCopyButConfirmedEmptyRangeDoesNot() {
+        for status in [AXError.success, .noValue, .cannotComplete] {
+            XCTAssertEqual(SelectedTextService.selectionFallbackError(status: status, range: nil, appName: "Browser"),
+                           .readFailed("Browser"))
+            XCTAssertEqual(SelectedTextService.selectionFallbackError(status: status,
+                                                                      range: CFRange(location: 10, length: 0),
+                                                                      appName: "Browser"), .noSelection)
+        }
+        XCTAssertEqual(SelectedTextService.selectionFallbackError(status: .attributeUnsupported, range: nil,
+                                                                  appName: "Browser"), .unsupportedApplication("Browser"))
+        XCTAssertEqual(SelectedTextService.selectionFallbackError(status: .success,
+                                                                  range: CFRange(location: 4, length: 12),
+                                                                  appName: "Browser"), .readFailed("Browser"))
+    }
+
+    func testSelectionFallbackKeepsPermissionAndInvalidRangeFailuresDistinct() {
+        XCTAssertEqual(SelectedTextService.selectionFallbackError(status: .apiDisabled,
+                                                                  range: CFRange(location: 0, length: 0),
+                                                                  appName: "Browser"), .permissionRequired)
+        for range in [CFRange(location: -1, length: 0), CFRange(location: 0, length: -1)] {
+            XCTAssertEqual(SelectedTextService.selectionFallbackError(status: .success, range: range, appName: "Browser"),
+                           .readFailed("Browser"))
+        }
+    }
+
     func testCodeStatusRequiresARealNonemptySelection() {
         XCTAssertEqual(SelectedTextService.codeSelectionCount(from: "Ln 3, Col 1 (806 selected)"), 806)
         XCTAssertEqual(SelectedTextService.codeSelectionCount(from: "2 selections (1,240 characters selected)"), 1240)

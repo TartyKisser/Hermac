@@ -13,6 +13,9 @@ struct GlobalShortcut: Codable, Equatable {
     static let translationDefault = GlobalShortcut(
         keyCode: UInt32(kVK_ANSI_T), modifiers: UInt32(controlKey | shiftKey), keyName: "T"
     )
+    static let reminderDefault = GlobalShortcut(
+        keyCode: UInt32(kVK_ANSI_R), modifiers: UInt32(controlKey | shiftKey), keyName: "R"
+    )
     static let modifierMask = UInt32(cmdKey | controlKey | optionKey | shiftKey)
 
     var displayName: String {
@@ -83,12 +86,21 @@ final class GlobalShortcutController {
     enum Purpose: UInt32 {
         case chat = 1
         case translation = 2
+        case reminder = 3
 
         var storageKey: String {
-            self == .chat ? "quickChatShortcut" : "quickTranslationShortcut"
+            switch self {
+            case .chat: "quickChatShortcut"
+            case .translation: "quickTranslationShortcut"
+            case .reminder: "quickReminderShortcut"
+            }
         }
         var defaultShortcut: GlobalShortcut {
-            self == .chat ? .default : .translationDefault
+            switch self {
+            case .chat: .default
+            case .translation: .translationDefault
+            case .reminder: .reminderDefault
+            }
         }
     }
 

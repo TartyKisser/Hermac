@@ -10,6 +10,9 @@ final class GlobalShortcutTests: XCTestCase {
         XCTAssertEqual(GlobalShortcut.carbonModifiers(from: flags), UInt32(controlKey | optionKey | shiftKey))
         XCTAssertEqual(GlobalShortcut.default.modifiers, UInt32(controlKey | shiftKey))
         XCTAssertEqual(GlobalShortcut.translationDefault.keyCode, UInt32(kVK_ANSI_T))
+        XCTAssertEqual(GlobalShortcut.reminderDefault.keyCode, UInt32(kVK_ANSI_R))
+        XCTAssertEqual(Set([GlobalShortcut.default.keyCode, GlobalShortcut.translationDefault.keyCode,
+                            GlobalShortcut.reminderDefault.keyCode]).count, 3)
     }
 
     func testOnlyMatchingEnabledSystemShortcutsConflict() {
@@ -100,17 +103,20 @@ final class GlobalShortcutTests: XCTestCase {
         XCTAssertEqual(status, OSStatus(eventHotKeyExistsErr), "The original shortcut must remain registered")
     }
 
-    func testChatAndTranslationReadIndependentSavedShortcuts() throws {
+    func testAllThreePurposesReadIndependentSavedShortcuts() throws {
         let suite = "HermacShortcutTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let chat = GlobalShortcut(keyCode: UInt32(kVK_ANSI_J), modifiers: UInt32(controlKey | shiftKey), keyName: "J")
         let translation = GlobalShortcut(keyCode: UInt32(kVK_ANSI_Y), modifiers: UInt32(controlKey | shiftKey), keyName: "Y")
+        let reminder = GlobalShortcut(keyCode: UInt32(kVK_ANSI_U), modifiers: UInt32(controlKey | shiftKey), keyName: "U")
         defaults.set(try JSONEncoder().encode(chat), forKey: "quickChatShortcut")
         defaults.set(try JSONEncoder().encode(translation), forKey: "quickTranslationShortcut")
+        defaults.set(try JSONEncoder().encode(reminder), forKey: "quickReminderShortcut")
 
         XCTAssertEqual(GlobalShortcutController(defaults: defaults).shortcut, chat)
         XCTAssertEqual(GlobalShortcutController(purpose: .translation, defaults: defaults).shortcut, translation)
+        XCTAssertEqual(GlobalShortcutController(purpose: .reminder, defaults: defaults).shortcut, reminder)
     }
 
     func testTranslationRejectsChatShortcutAndKeepsItsOwnRegistration() {
@@ -144,15 +150,19 @@ final class GlobalShortcutTests: XCTestCase {
     func testCarbonEventsOnlyInvokeTheMatchingShortcutPurpose() throws {
         let (chat, chatDefaults, chatSuite) = makeController()
         let (translation, translationDefaults, translationSuite) = makeController(purpose: .translation)
+        let (reminder, reminderDefaults, reminderSuite) = makeController(purpose: .reminder)
         defer {
-            chat.stop(); translation.stop()
+            chat.stop(); translation.stop(); reminder.stop()
             chatDefaults.removePersistentDomain(forName: chatSuite)
             translationDefaults.removePersistentDomain(forName: translationSuite)
+            reminderDefaults.removePersistentDomain(forName: reminderSuite)
         }
         var chatCalls = 0
         var translationCalls = 0
+        var reminderCalls = 0
         chat.start { chatCalls += 1 }
         translation.start { translationCalls += 1 }
+        reminder.start { reminderCalls += 1 }
 
         func dispatch(id: UInt32) throws {
             var rawEvent: EventRef?
@@ -172,9 +182,15 @@ final class GlobalShortcutTests: XCTestCase {
         try dispatch(id: 2)
         XCTAssertEqual(chatCalls, 1)
         XCTAssertEqual(translationCalls, 1)
+        XCTAssertEqual(reminderCalls, 0)
+        try dispatch(id: 3)
+        XCTAssertEqual(chatCalls, 1)
+        XCTAssertEqual(translationCalls, 1)
+        XCTAssertEqual(reminderCalls, 1)
         try dispatch(id: 99)
         XCTAssertEqual(chatCalls, 1)
         XCTAssertEqual(translationCalls, 1)
+        XCTAssertEqual(reminderCalls, 1)
     }
 
     private func makeController(purpose: GlobalShortcutController.Purpose = .chat) -> (GlobalShortcutController, UserDefaults, String) {

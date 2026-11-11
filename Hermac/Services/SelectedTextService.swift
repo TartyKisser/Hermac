@@ -349,17 +349,37 @@ enum SelectedTextService {
         }
         if status == .apiDisabled { throw SelectionError.permissionRequired }
 
+        // WebKit/Chromium may expose a document selection through opaque text
+        // markers while AXSelectedText is empty on their focused HTML area.
+        var marker: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, "AXSelectedTextMarkerRange" as CFString, &marker) == .success,
+           let marker {
+            var text: CFTypeRef?
+            let markerStatus = AXUIElementCopyParameterizedAttributeValue(
+                element, "AXStringForTextMarkerRange" as CFString, marker, &text
+            )
+            if markerStatus == .apiDisabled { throw SelectionError.permissionRequired }
+            if markerStatus == .success, let string = text as? String, !string.isEmpty {
+                return try selectionText(from: text, status: markerStatus, appName: appName)
+            }
+        }
+
+        var selectedRange: CFRange?
         var rangeValue: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
            let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() {
             var range = CFRange()
             if AXValueGetValue(rangeValue as! AXValue, .cfRange, &range) {
-                guard range.length > 0 else { throw SelectionError.noSelection }
+                selectedRange = range
+                guard range.location >= 0, range.length > 0 else {
+                    throw selectionFallbackError(status: status, range: range, appName: appName)
+                }
                 var rangeText: CFTypeRef?
                 let rangeStatus = AXUIElementCopyParameterizedAttributeValue(
                     element, kAXStringForRangeParameterizedAttribute as CFString, rangeValue, &rangeText
                 )
-                if rangeStatus == .success {
+                if rangeStatus == .apiDisabled { throw SelectionError.permissionRequired }
+                if rangeStatus == .success, let text = rangeText as? String, !text.isEmpty {
                     return try selectionText(from: rangeText, status: rangeStatus, appName: appName)
                 }
                 var value: CFTypeRef?
@@ -369,7 +389,18 @@ enum SelectedTextService {
                 }
             }
         }
-        return try selectionText(from: selectedValue, status: status, appName: appName)
+        throw selectionFallbackError(status: status, range: selectedRange, appName: appName)
+    }
+
+    // An empty result on an HTML area is not evidence of an empty selection.
+    // Only a real zero-length range rules out the standard Copy fallback.
+    static func selectionFallbackError(status: AXError, range: CFRange?, appName: String) -> SelectionError {
+        if status == .apiDisabled { return .permissionRequired }
+        if let range {
+            if range.location < 0 || range.length < 0 { return .readFailed(appName) }
+            if range.length == 0 { return .noSelection }
+        }
+        return status == .attributeUnsupported ? .unsupportedApplication(appName) : .readFailed(appName)
     }
 
     static func selectionText(in text: String, range: CFRange, appName: String) throws -> String {

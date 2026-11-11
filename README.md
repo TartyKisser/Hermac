@@ -6,7 +6,7 @@
 
 **A native macOS client for your local Hermes Agent.**
 
-Chat, manage sessions, ask from anywhere, and translate selected text — with SwiftUI and Liquid Glass.
+Chat, ask from anywhere, translate selected text, and turn plans into reminders — with SwiftUI and Liquid Glass.
 
 [![macOS](https://img.shields.io/badge/macOS-26%2B-1F6FEB?logo=apple&logoColor=white)](#requirements)
 [![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](#development)
@@ -21,11 +21,11 @@ Chat, manage sessions, ask from anywhere, and translate selected text — with S
 
 ## Why Hermac?
 
-Hermes already handles the models, tools, and conversations. Hermac gives that local agent a home on your Mac: a familiar sidebar, readable Markdown, a quick input window, and a translation shortcut available while you work.
+Hermes already handles the models, tools, and conversations. Hermac gives that local agent a home on your Mac: a familiar sidebar, readable Markdown, a quick input window, and shortcuts for translation and reminders while you work.
 
 The name brings **Hermes + Mac** together. The app is built with native SwiftUI and AppKit, uses Apple's Liquid Glass APIs, and keeps its architecture small so more Hermes-powered tools can grow from the same foundation.
 
-**Current release: 0.5.2.** This is a source-first project: build it in Xcode. A signed, notarized installer is not included. The current app interface is in Chinese.
+**Current release: 0.6.0.** This is a source-first project: build it in Xcode. A signed, notarized installer is not included. The current app interface is in Chinese.
 
 ## What you can do
 
@@ -35,11 +35,14 @@ The name brings **Hermes + Mac** together. The app is built with native SwiftUI 
 | **Readable Markdown** | Headings, tables, nested lists, quotes, links, inline code, and fenced code blocks render in both the main app and quick chat. Wide tables and code scroll horizontally. |
 | **Conversation branches** | Branch from a saved assistant reply into a separate session, keeping the original conversation intact. |
 | **Quick chat from anywhere** | Press **⌃⇧Space** while Hermac is running. Start with a slim input box; after sending, continue in a movable, resizable conversation window. Closing it keeps the session in the sidebar. |
-| **Optional screen context** | Tick the screenshot option to attach the display containing the quick window. The quick window itself is excluded. The option starts unchecked. |
+| **Quick-chat screen context** | Tick the screenshot option to attach the display containing the quick window. The quick window itself is excluded. The option starts unchecked. |
 | **Selected-text translation** | Select English in a supported app and press **⌃⇧T** for a Chinese translation. Copy the result, then close the window to clean up its temporary Hermes session. |
+| **Quick reminders** | Select scheduling text in a supported app and press **⌃⇧R**. Review and edit a proposed title, date/time, location, notes, priority, and list; **Confirm Create** writes it to Apple Reminders. |
 | **Shortcuts that fit your setup** | Record your own combinations in Settings. Hermac checks system shortcuts and detectable global registrations before saving. |
 
 Replies and code have copy buttons with a brief confirmation. Copying an entire reply preserves its Markdown source. Chinese input composition follows native macOS behavior.
+
+Reminder extraction gathers nearby loaded text from the source conversation or document. When that is insufficient, it can read the current and up to two preceding views using local OCR, then attempt to restore the original scroll position. Sparse OCR can fall back to one current-window image. The review panel reports the context actually collected; it does not promise a complete conversation history.
 
 ## Requirements
 
@@ -105,23 +108,26 @@ Build outputs stay in the ignored `build/` directory.
 | --- | --- |
 | **⌃⇧Space** | Open or hide quick chat |
 | **⌃⇧T** | Translate selected English into Simplified Chinese |
+| **⌃⇧R** | Extract a reminder draft from selected text and nearby context |
 | **⌘N** | New conversation |
 | **⌘R** | Refresh sessions |
 | **⌘.** | Stop generation |
 | **Return** / **⇧Return** | Send / insert a newline |
-| **Esc** | Dismiss quick or translation windows; input composition is handled first |
+| **Esc** | Dismiss quick/translation windows or an unsaved reminder draft; input composition is handled first |
 
-Global shortcuts are active while Hermac is running. Configure them in Settings if they overlap with your workflow. Conflict detection cannot cover every app-specific custom binding.
+Global shortcuts are active while Hermac is running. Configure all three in Settings if they overlap with your workflow. Conflict detection cannot cover every app-specific custom binding. Reminder saving runs to completion after confirmation.
 
 ## Permissions & data
 
 - **Normal chat and the quick-chat shortcut:** no Accessibility or Input Monitoring permission is required.
-- **Selected-text translation:** macOS Accessibility permission is needed. On some system versions it appears under **Device Control and Data Access**.
-- **Screenshot context:** macOS Screen Recording permission is needed when you choose to attach a screen.
+- **Translation and reminder selection/context:** macOS Accessibility permission is needed. On some system versions it appears under **Device Control and Data Access**.
+- **Quick-chat screenshots:** Screen Recording permission is needed when you tick the screenshot option and send.
+- **Reminder OCR/image fallback:** Screen Recording permission may be requested automatically after triggering a reminder when native context is insufficient. This captures the source window, not the whole display.
+- **Apple Reminders:** EventKit full-access permission is requested when loading writable lists or confirming creation. A reminder is written only after confirmation.
 
-Hermac connects to a local Hermes installation. **Where model processing happens depends on your Hermes provider configuration.** Messages, submitted screenshots, and selected text are passed to that configured model through Hermes.
+Hermac connects to a local Hermes installation. **Where model processing happens depends on your Hermes provider configuration.** Messages, submitted screenshots, and selected text are passed to that configured model through Hermes. Reminder extraction also sends the source app/window title and collected context text, with a current-window image only when needed. This model processing happens **before** draft review; confirmation controls writing to Apple Reminders.
 
-Hermac does not maintain a second chat database or independently store model API keys. See [the privacy notes](docs/PRIVACY.md) for clipboard fallback, diagnostics, and temporary translation sessions.
+Hermac does not maintain a second chat database or independently store model API keys. See [the privacy notes](docs/PRIVACY.md) for clipboard fallback, diagnostics, context collection, and temporary tool sessions.
 
 After rebuilding an ad hoc signed app, macOS may retain an outdated Accessibility entry. If the toggle is on but translation still requests access, quit Hermac, remove its old entry in System Settings, and add the app you actually launch. Reusing a stable development signing identity can reduce this issue.
 
@@ -135,7 +141,9 @@ Hermac/
 ├── HermacController.swift       # Main app and small-window coordination
 ├── MarkdownDocument.swift       # Native Markdown block structure
 ├── TranslationStore.swift       # Translation prompt and session lifecycle
-├── Services/                    # Hermes transport, selection and screenshots
+├── ReminderStore.swift          # Editable reminder draft and confirmation
+├── HermesToolSession.swift      # Hidden model operation and session cleanup
+├── Services/                    # Hermes transport, context/OCR, screenshots and EventKit
 ├── Shortcuts/                   # Global hotkeys and shortcut recording
 ├── Views/                       # Native chat, Markdown and window content
 ├── Resources/hermac_bridge.py   # Bridge using Hermes's own Python runtime
@@ -151,19 +159,17 @@ xcodebuild -project Hermac.xcodeproj -scheme Hermac \
 python3 -m unittest discover -s Tests -v
 ```
 
-The current suite contains **59 Swift tests and 3 Python tests**. Optional gateway and model smoke tests have different data access and cost implications; see [TESTING.md](TESTING.md) before running them.
+The current suite contains **87 Swift tests and 3 Python tests**. Optional gateway and model smoke tests have different data access and cost implications; see [TESTING.md](TESTING.md) before running them.
 
 ## Current scope
 
-Hermac currently supports a local Hermes instance, its configured model, screenshot attachments, and English-to-Chinese translation. Remote Hermes connections, in-app model switching, arbitrary file attachments, and multi-profile management are outside the current release.
+Hermac currently supports a local Hermes instance, its configured model, screenshot attachments, English-to-Chinese translation, and confirmed creation in Apple Reminders. Remote Hermes connections, in-app model switching, arbitrary file attachments, and multi-profile management are outside the current release.
 
-Selection reading depends on the source app's accessibility or standard-copy support. Branching from replies already compacted by Hermes is unavailable. Password and `sudo` interactions requested by server-side tools are not handled by the client.
+Selection/context reading depends on the source app's accessibility or standard-copy support. Reminder context collection is bounded and stops on source changes or active user interaction; scroll restoration is attempted and its status is shown. Branching from replies already compacted by Hermes is unavailable. Password and `sudo` interactions requested by server-side tools are not handled by the client.
 
 ## Contributing
 
 Bug reports, usability improvements, and focused pull requests are welcome. Include your macOS, Xcode, and Hermes versions; use synthetic examples or redact private conversation text. Run the unit tests for code changes and keep generated files out of commits.
-
-To publish your own copy, follow [the GitHub upload guide](UPLOAD_TO_GITHUB.md).
 
 ## License & acknowledgements
 
